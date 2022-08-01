@@ -1,0 +1,38 @@
+History (azureuser)
+1  apt update
+    2  sudo apt update
+    3  sudo apt upgrade
+    4  pwd
+    5  docker
+    6  sudo apt install docker.io
+    7  clear
+    8  docker
+    9  docker container run hello-world
+   10  sudo docker container run hello-world
+   11  sudo docker container run --name meucontainer hello-world
+   12  docker container ls -a
+   13  sudo docker container ls -a
+   14  docker container rm 30c
+   15  sudo docker container rm 30c
+   16  sudo docker container ls -a
+   17  sudo docker container rm 18
+   18  sudo docker container ls -a
+   19  sudo docker container run -it ubuntu /bin/bash
+   20  sudo docker container nginx
+   21  sudo docker container run nginx
+   22  sudo docker container run -d nginx
+   23  sudo docker container ls -a
+   24  sudo docker exec -it fac97c2d5375 /bin/bash
+   25  curl http://localhost:8080
+   26  sudo docker container run -d -p 8080:80 nginx
+   27  curl http://localhost:8080
+   28  docker container ls -a
+   29  sudo docker container ls -a
+   30  sudo docker container stop fac97c2d5375
+   31  sudo docker container stop feae2ae125af
+   32  sudo docker container ls -a
+----------------
+History (root)
+root@ubuntu:/home/azureuser# history
+    1  docker container rm -f $(docker container ls -aq)
+    2  docker container ls -a

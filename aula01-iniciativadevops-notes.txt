@@ -1,0 +1,73 @@
+criei vm no azure (ubuntu)
+acessei via ssh
+apt get update e upgrade
+sudo apt install docker.io
+docker container run (executar um container)
+especificar a imagem
+docker container run hello-world
+ele busca no docker hub (docker registry)
+baixa no docker daemon e cria o container, rodando em seguida
+
+docker container ls (lista os containers rodando)
+docker container ls -a (lista os containers criados, mesmo os que já terminaram)
+
+docker container run --name meucontainer hello-world
+cria o container com o nome especificado (meucontainer)
+
+docker container rm (nome ou id) (remove o container)
+
+docker container run --rm hello-world (executa e remove em seguida)
+
+------------
+Interagindo com o container
+
+docker container run -it ubuntu /bin/bash
+vai buscar a imagem, criar o container, iniciar a execução e abrir a linha de comando dentro do container como root
+atualizei com o apt update
+instalei o curl
+exit para sair
+
+quando eu saio (exit) e executo novamente (docker container run -it ubuntu /bin/bash), o curl não está mais instalado, porque é uma instância nova do container
+
+----------------
+Executando um processo continuamente
+
+Vamos fazer um container ngnix
+docker container run nginx
+(busca a imagem, cria o container, executa) - o terminal fica travado porque o processo fica em execução contínua
+
+Executar o container em background (deamon)
+docker container run -d nginx
+
+Entrar no container:
+docker exec -it <id> /bin/bash
+
+Fazer um port-bind:
+porta local: 8080
+docker container run -d -p 8080:80 nginx
+(busca a imagem do nginx, cria o container e executa fazendo a ligação da porta local 8080 com a porta 80 usada pelo nginx)
+
+------------------------
+Excluindo os containers:
+
+Se estiver rodando, parar primeiro: 
+docker container stop <id>
+
+Excluir:
+docker rm <id> 
+docker rm -f <id> (para e exclui)
+
+Mostrar somente os IDs dos containers:
+docker container ls -a -q
+
+Combinar dois comandos para excluir tudo:
+docker container rm -f $(docker container ls -aq)
+
+------------------
+Criar um container Postgres
+(ver a documentação no Docker Hub)
+docker container run -d -p 5432:5432 -e  postgres 
+
+
+
+
