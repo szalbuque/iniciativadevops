@@ -65,7 +65,7 @@ docker container rm -f $(docker container ls -aq)
 
 ------------------
 Criar um container Postgres
-(ver a documentação no Docker Hub)
+(ver a documentação no Docker Hub  -  https://hub.docker.com/_/postgres/)
 docker container run -d -p 5432:5432 -e  postgres 
 
 
