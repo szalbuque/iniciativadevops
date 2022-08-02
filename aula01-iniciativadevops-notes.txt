@@ -66,7 +66,97 @@ docker container rm -f $(docker container ls -aq)
 ------------------
 Criar um container Postgres
 (ver a documentação no Docker Hub  -  https://hub.docker.com/_/postgres/)
-docker container run -d -p 5432:5432 -e  postgres 
+docker container run -d -p 5432:5432 -e POSTGRES_DB=aula-iniciativa -e POSTGRES_PASSWORD=Iniciativa1234 -e POSTGRES_USER=iniciativadevops postgres 
+
+psql --dbname=aula-iniciativa --host=localhost --port=5432 --username=iniciativadevops
+
+Resultado da conexão:
+root@ubuntu:/home/azureuser# psql --dbname=aula-iniciativa --host=localhost --port=5432 --username=iniciativadevops
+Password for user iniciativadevops: 
+psql (12.11 (Ubuntu 12.11-0ubuntu0.20.04.1), server 14.4 (Debian 14.4-1.pgdg110+1))
+WARNING: psql major version 12, server major version 14.
+         Some psql features might not work.
+Type "help" for help.
+
+aula-iniciativa=# 
+-----------------------------------
+
+Agora preparando a minha imagem do docker
+
+Exemplo: imagem do ubuntu com o curl
+Usar o Dockerfile
+Vantagens: automatizar a criação do container e fazer versionamento
+Instalei a extensão do Docker no VSCode para criar o Docker file
+Copiei para um arquivo Dockerfile na VM, usando o vim
+
+rodei o comando para criar a imagem:
+ sudo docker build -t ubuntu-curl .
+
+para ver as imagens criadas:
+ sudo docker image ls
+
+--------------------
+Construção em camadas (processo de construção de imagens)
+-> cada instrução no Dockerfile é uma camada
+-> a imagem é somente leitura
+-> o container é uma camada acima, porém é leitura/escrita
+-> o container otimiza o espaço fazendo referência à imagem
+-> se eu executar novamente a construção da imagem, ele aproveita as camadas que já foram construídas; se mudar a ordem das instruções ele vai reconstruir
+-> se eu quiser forçar a reconstrução, tenho que usar a opção --no-cache
+
+------------------
+Limpar as imagens criadas:
+
+docker image rm <id> (pode usar os primeiros caracteres apenas)
+
+docker image prune (apaga lixos de imagens temporárias)
+
+Apagar todas as imagens:
+docker container rm -f $(docker container ls -aq)
+
+-------------------
+Enviar a imagem para o Docker Hub:
+
+precisa criar a imagem com a estrutura:
+<namespace>/<nomerepo>:<tag>
+szalbuque/ubuntu-curl:v01
+
+(se eu não colocar a tag, uso a versão latest)
+
+docker tag ubuntu-curl szalbuque/ubuntu-curl:v1
+docker tag ubuntu-curl szalbuque/ubuntu-curl:latest
+
+docker login
+docker push <imagem>
+
+----------------------------
+Para usar a minha imagem que está no docker hub:
+
+docker container run -it szalbuque/ubuntu-curl:v1 /bin/bash
+
+------------------------------
+Usando a aplicação de conversão de temperatura:
+
+Fazer um fork no github https://bit.ly/conversao-temperatura
+
+git clone para a vm ubuntu
+
+entra na pasta da aplicação e cria o Docker file
+
+Cria a imagem com:
+sudo docker build -t szalbuque/conversao-temperatura:v1 .
+
+Rodar para criar o container e levantar a aplicação:
+sudo docker container run -d -p 8080:8080 szalbuque/conversao-temperatura:v1
+
+Para testar:
+curl localhost:8080
+
+(parei em 2:59:28)
+
+
+ 
+
 
 
 
