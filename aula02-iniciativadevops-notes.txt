@@ -1,0 +1,294 @@
+Iniciativa Devops aula 2
+Kubernetes
+alta disponibilidade
+escalabidade
+resiliência
+balanceamento de carga
+service discovery (busca o processo)
+self healing
+
+Control plane (master) x worker node (node)
+gerenciamento				carga de trabalho
+precisa ter mais de um	- Kube proxy
+- Kube Api Server			- Kubelet
+- Kube Scheduler			- Container runtime (containerD e primal)
+- ETCD (bd chave,valor)
+- Kube Controller Manager
+
+Usar o Docker para criar as imagens. Execução pelo Docker fora do Kubernetes.
+Dentro do Kubernetes, usar o containerD e o Primal, que são compatíveis.
+Dá pra usar o Docker Swarm também, mas está caindo em desuso por causa das versões mais leves de kubernetes.
+
+3 formas de criar o cluster kubernetes:
+1) on-premise: máquina virtual, bare metal, meu hardware, total controle (precisa gerenciar tudo, instalação e configuração, atualizações) - Ferramentas: kubeadm, rke, microk8s, k3s)
+2) kube as a service: azure, aws, digital ocean, google. Você não precisa gerenciar o control plane. Você gerencia as aplicações. 
+3) local: para estudo, teste. ferramentas: k3d, kind, microk8s, k3s.
+
+kubectl (win, linux, mac)
+- feita a instalação na vm azure com as instruções do site (https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/)
+
+k3d - para estudo (criar clusters kubernetes, usando containers docker - cada nó um container) - instalação confirme site (https://k3d.io/v5.4.4/#installation)
+
+> k3d cluster create (cria um cluster com um nó apenas)
+> # kubectl cluster-info
+Kubernetes control plane is running at https://0.0.0.0:38985
+CoreDNS is running at https://0.0.0.0:38985/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+Metrics-server is running at https://0.0.0.0:38985/api/v1/namespaces/kube-system/services/https:metrics-server:https/proxy
+
+> k3d cluster list (mostra o cluster)
+NAME          SERVERS   AGENTS   LOADBALANCER
+k3s-default   1/1       0/0      true
+
+Criou um cluster com um Control Plane apenas, que também funciona como worker node. Criou também um loadbalancer.
+
+-------------------
+Criar um cluster com  mais de um nó
+
+k3d cluster create meucluster --servers 3 --agents 3
+
+>root@kubernetes:/home/azureuser# kubectl get nodes
+NAME                      STATUS   ROLES               
+        AGE   VERSION
+k3d-meucluster-agent-0    Ready    <none>              
+        21s   v1.23.8+k3s1
+k3d-meucluster-agent-1    Ready    <none>              
+        21s   v1.23.8+k3s1
+k3d-meucluster-agent-2    Ready    <none>              
+        21s   v1.23.8+k3s1
+k3d-meucluster-server-0   Ready    control-plane,etcd,master   51s   v1.23.8+k3s1
+k3d-meucluster-server-1   Ready    control-plane,etcd,master   39s   v1.23.8+k3s1
+k3d-meucluster-server-2   Ready    control-plane,etcd,master   26s   v1.23.8+k3s1
+
+> root@kubernetes:/home/azureuser# k3d cluster list
+NAME         SERVERS   AGENTS   LOADBALANCER
+meucluster   3/3       3/3      true
+
+------------------
+Como fazer o deploy (50:47)
+
+- Elementos que formam o deploy no kubernetes:
+	- pod: menor objeto do cluster kubernetes (posso ter mais de um container num pod, compartilham o mesmo endereço de IP e o mesmo file system - ver "sidecar") - NÃO é boa prática juntar todos os elementos da sua aplicação num mesmo pod;
+		- SIM: o container da api num pod; o conteiner do bd noutro pod, o container do frontend noutro pod.
+		- manifesto do pod (arquivo yeml) --> criando o arquivo pod.yaml:
+			- para verificar o que colocar em apiVersion, digitar kubectl api-resources na linha de comando
+
+> kubectl api-resources | grep pod
+pods                              po           v1       true         Pod
+
+			- a versão é v1 e o tipo é Pod
+
+Depois de criado o pod.yaml, vamos aplicá-lo ao cluster:
+># kubectl apply -f pod.yaml
+pod/meupod created
+
+Ver se está ok:
+># kubectl get pods
+NAME     READY   STATUS    RESTARTS   AGE
+meupod   1/1     Running   0          79s
+
+> # kubectl get po -o wide
+NAME     READY   STATUS    RESTARTS   AGE     IP          NODE                     NOMINATED NODE   READINESS GATES
+meupod   1/1     Running   0          2m33s   10.42.3.3   k3d-meucluster-agent-1   <none>           <none>    
+
+KUBECTL DESCRIBE:
+
+> # kubectl describe pod
+Name:         meupod
+Namespace:    default
+Priority:     0
+Node:         k3d-meucluster-agent-1/172.21.0.5
+Start Time:   Wed, 03 Aug 2022 20:47:58 +0000
+Labels:       <none>
+Annotations:  <none>
+Status:       Running
+IP:           10.42.3.3
+IPs:
+  IP:  10.42.3.3
+Containers:
+  web:
+    Container ID:   containerd://34b6627b3ea9d49374ab8eae4a0e35f2829cde7d0087f28eb7df7f034d04f51c
+    Image:          fabricioveronez/web-page:blue
+    Image ID:       docker.io/fabricioveronez/web-page@sha256:2b677c2cf98f44a45a7decb37adff63f4be5f36d496489a507b893501e6dc2b3
+    Port:           80/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Wed, 03 Aug 2022 20:48:05 +0000
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-r4jsl (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  kube-api-access-r4jsl:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age    From               Message
+  ----    ------     ----   ----               -------
+  Normal  Scheduled  3m51s  default-scheduler  Successfully assigned default/meupod to k3d-meucluster-agent-1
+  Normal  Pulling    3m52s  kubelet            Pulling image "fabricioveronez/web-page:blue"
+  Normal  Pulled     3m45s  kubelet            Successfully pulled image "fabricioveronez/web-page:blue" in 6.245948473s
+  Normal  Created    3m45s  kubelet            Created container web
+  Normal  Started    3m45s  kubelet            Started container web
+
+PARA TESTAR A WEB APP (que está no pod):
+# kubectl port-forward p
+od/meupod 8080:80
+Forwarding from 127.0.0.1:8080 -> 80
+Forwarding from [::1]:8080 -> 80
+
+(entrei em outro terminal para ver a aplicação rodando)
+> azureuser@kubernetes:~$ curl localhost:8080
+<body style="text-align: center;background-color: blue;">
+   <H1>PÁGINA DE TESTE</H1>
+
+    <h3> Servidor que processou a requisição - meupod </h3>
+
+-------------------
+PARA GARANTIR ESCALABILIDADE E RESILIÊNCIA
+preciso de um controlador dos pods
+do jeito que está (naked pod), se eu apagar o pod, a aplicação sai do ar
+REPLICA SET (labels e selectors) 1:08
+
+Como é feita a interação entre os objetos do kubernetes? Os objetos são marcados com labels.
+O selector seleciona os objetos com base nas labels.
+
+Como funciona o REPLICA SET :
+	- defino o template do pod
+	- defino a quantidade de réplicas
+	- caso uma réplica caia, ele cria outro pod como réplica daquele template
+	- se eu alterar a quantidade de réplicas, ele ajusta a quantidade de pods (réplicas)
+
+No arquivo replicaset.yaml vem a especificação do replicaset e do template do pod do qual serão criadas as réplicas.
+
+> kubectl apply -f replicaset.yaml
+> kubectl get replicaset
+# kubectl get replicaset
+NAME            DESIRED   CURRENT   READY   AGE
+meureplicaset   1         1         1       2m9s
+
+--> para ver os pods criados pelo replicaset:
+# kubectl get pods
+NAME                  READY   STATUS    RESTARTS   AGE
+meureplicaset-wrp6j   1/1     Running   0          2m54s
+
+--> TESTANDO A RESILIÊNCIA:
+kubectl delete pod meureplicaset-wrp6j
+pod "meureplicaset-wrp6j" deleted
+root@kubernetes:/home/azureuser# kubectl get pods
+NAME                  READY   STATUS    RESTARTS   AGE
+meureplicaset-j79vv   1/1     Running   0          8s
+
+Deletei o pod e ele criou automaticamente outra réplica.
+
+--> Para testar a escalabilidade:
+- primeiro alterar o arquivo replicaset.yaml para incluir a linha "replicas: 10"
+- rodar de novo kubectl apply -f replicaset.yaml
+- ver os pods:
+r# kubectl get pods
+NAME                  READY   STATUS    RESTARTS   AGE
+meureplicaset-68wn7   1/1     Running   0          31s
+meureplicaset-6vzdb   1/1     Running   0          31s
+meureplicaset-8mms6   1/1     Running   0          31s
+meureplicaset-99h4s   1/1     Running   0          31s
+meureplicaset-d4ltl   1/1     Running   0          31s
+meureplicaset-gr4j7   1/1     Running   0          31s
+meureplicaset-j79vv   1/1     Running   0          2m58s
+meureplicaset-mmvts   1/1     Running   0          31s
+meureplicaset-rhrf2   1/1     Running   0          31s
+meureplicaset-thsgg   1/1     Running   0          31s
+
+# kubectl get replicaset
+NAME            DESIRED   CURRENT   READY   AGE
+meureplicaset   10        10        10      11m
+
+--> Agora quero testar a TROCA DE VERSão COM DOWNTIME ZERO:
+Ele mostrou que, entrando no replicaset.yaml e trocando a versão da aplicação na linha que especifica a imagem, não resolve o problema. Porque o replicaset não faz este controle. Seria necessário deletar manualmente todos os pods, para ele atualizar criando novos pods com a versão nova.
+
+Aí entra o DEPLOYMENT. (1:28:37)
+
+O Deployment fica acima do replicaset. caso tenha alguma alteração na especificação do replicaset, o deployment cria um outro replicaset. 
+Progressivamente, todos os pods serão substituídos.
+Dá pra fazer rollback, pq ele mantém o replicaset antigo.
+Ele faz o gerenciamento de versão.
+
+Para criar o deployment, fizemos a cópia do replicaset.yaml e renomeamos como deployment.yaml.
+Mudamos o kind para Deployment e o name para meudeployment.
+Fica implícito que, quando usamos o deployment, estamos usando também o replicaset.
+
+# kubectl apply -f deployment.yaml 
+deployment.apps/meudeployment created
+root@kubernetes:/home/azureuser# kubectl get pods
+NAME                            READY   STATUS    RESTARTS   AGE
+meudeployment-9fb78bf46-2slct   1/1     Running   0          7s
+meudeployment-9fb78bf46-5tq2g   1/1     Running   0          7s
+meudeployment-9fb78bf46-c22sp   1/1     Running   0          7s
+meudeployment-9fb78bf46-cl2qj   1/1     Running   0          7s
+meudeployment-9fb78bf46-d2bgz   1/1     Running   0          7s
+meudeployment-9fb78bf46-gtw6h   1/1     Running   0          7s
+meudeployment-9fb78bf46-j6lw4   1/1     Running   0          7s
+meudeployment-9fb78bf46-kc9ts   1/1     Running   0          7s
+meudeployment-9fb78bf46-mpctw   1/1     Running   0          7s
+  1/1     Running   0          7s
+
+# kubectl get deployment
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+meudeployment   10/10   10           10          76s
+
+# kubectl get replicaset
+NAME                      DESIRED   CURRENT   READY   AGE
+meudeployment-9fb78bf46   10        10        10      119s
+
+--> TESTAR A TROCA DE VERSÃO
+kubectl port-forward pod/meudeployment-9fb78bf46-mpctw 8080:80
+curl localhost:8080
+<body style="text-align: center;background-color: blue;">
+   <H1>PÁGINA DE TESTE</H1>
+
+    <h3> Servidor que processou a requisição - meudeployment-9fb78bf46-mpctw </h3>
+
+--> agora vamos modificar o arquivo deployment.yaml trocando a versão da aplicação na linha "image" para green
+-- salvar e fechar
+-- kubectl apply -f deployment.yaml
+-- progressivamente ele substitui os pods
+
+--> os dois replicasets coexistem, mas o novo é que está ativo, porém, posso fazer um ROLLBACK:
+$ sudo kubectl get replicaset
+NAME                      DESIRED   CURRENT   READY   AGE
+meudeployment-9fb78bf46   0         0         0       11m
+meudeployment-b9548cb65   10        10        10      2m20s
+
+--> Mostra o HISTÓRICO
+
+$ sudo kubectl rollout history deployment meudeployment
+deployment.apps/meudeployment 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+
+--> faz o UNDO
+> kubectl rollout undo deployment meudeployment
+deployment.apps/meudeployment rolled back
+
+(1:38:52)
+
+
+		
+
+
+
+
+
