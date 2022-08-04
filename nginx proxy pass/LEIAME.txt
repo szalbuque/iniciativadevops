@@ -1,0 +1,6 @@
+Para testar externamente a aplicação web instalada no cluster kubernetes fiz o seguinte:
+- Instalei o NGINX no servidor
+- Alterei a configuração do arquivo 
+> /etc/nginx/sites-available/default     (ver arquivo nesta pasta)
+
+- Abri a porta 80, no firewall da VM, para receber requisições HTTP

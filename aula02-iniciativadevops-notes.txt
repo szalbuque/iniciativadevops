@@ -287,7 +287,96 @@ deployment.apps/meudeployment rolled back
 
 
 		
+--> AINDA ESTOU ACESSANDO OS PODS INDIVIDUALMENTE, PRECISAMOS DO SERVICE DISCOVERY (1:40)
 
+3 tipos de service
+1) clusterIP: não dá acesso externo, serve para comunicação interna no cluster
+2) NodePort: expõe externamente; elege um número de porte (30000 a 32767) que vai ser exposto em todos os pods daquele cluster; muito usado on-premise
+3) LoadBalancer: expõe externamente usando o serviço do cloud provider hospedeiro, que gera um IP externo
+
+O service vai ser um novo objeto no cluster, preciso incluir no manifesto do deployment.
+
+(ontem eu tinha parado a vm e hoje, quando reiniciei, precisei criar novo cluster com o k3d cluster create)
+
+> kubectl cluster-info
+Kubernetes control plane is running at https://0.0.0.0:41537
+CoreDNS is running at https://0.0.0.0:41537/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+Metrics-server is running at https://0.0.0.0:41537/api/v1/namespaces/kube-system/services/https:metrics-server:https/proxy
+
+> # kubectl apply -f deployment.yaml
+deployment.apps/meudeployment unchanged
+service/service-web created
+
+
+> # kubectl get service
+NAME          TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+kubernetes    ClusterIP   10.43.0.1      <none>        443/TCP        64m
+service-web   NodePort    10.43.21.210   <none>        80:32762/TCP   39s
+
+--> UM PROBLEMA, as aplicações estão rodando em containers, então não consigo usar diretamente pela porta criada.
+
+Similar ao port-bind do docker, vamos fazer no k3d.
+Deletar o cluster atual para criar novamente declarando a porta que queremos usar.
+
+Vamos ligar a porta 30000 do servidor com a porta 30000 do loadbalancer:
+
+> k3d cluster create meucluster --servers 3 --agents 3 -p "30000:30000@loadbalancer"
+># kubectl cluster-info
+Kubernetes control plane is running at https://0.0.0.0:35167
+CoreDNS is running at https://0.0.0.0:35167/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+Metrics-server is running at https://0.0.0.0:35167/api/v1/namespaces/kube-system/services/https:metrics-server:https/proxy
+
+Usando o comando docker container ls podemos ver que o container do load balancer está fazendo o bind de portas:
+># docker container ls
+CONTAINER ID   IMAGE                            COMMAND                  CREATED         STATUS         PORTS                                                                   
+         NAMES
+6885c41db8e3   ghcr.io/k3d-io/k3d-proxy:5.4.4   "/bin/sh -c nginx-pr…"   4 minutes ago   Up 3 minutes   80/tcp, 0.0.0.0:30000->30000/tcp, :::30000->30000/tcp, 0.0.0.0:35167->6443/tcp   k3d-meucluster-serverlb
+
+Antes de aplicar novamente o deployment, preciso alterar o manifesto, para dizer que quero usar a porta 30000.
+
+Incluir em :
+- protocol: TCP
+  port: 80
+  nodePort: 30000
+
+> # kubectl get service   
+NAME          TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+kubernetes    ClusterIP   10.43.0.1      <none>        443/TCP        7m35s
+service-web   NodePort    10.43.45.161   <none>        80:30000/TCP   9s
+
+--> PARA TESTAR O ACESSO EXTERNO À APLICAÇÃO WEB, FIZ O SEGUINTE: 
+- Instalei o NGINX configurando um proxy_pass para a porta 30000
+- Abri a porta 80 para receber requisições HTTP no firewall do servidor
+
+Fiz o teste trocando a aplicação de blue para green e funcionou.
+
+------
+Agora o projeto KUBE NEWS (fazer o fork https://github.com/KubeDev/kube-news)
+
+1) kubectl delete -f deployment.yaml (para deletar a aplicação anterior)
+2) verificar o bind:
+># docker container ls
+CONTAINER ID   IMAGE                            COMMAND                  CREATED       STATUS       PORTS                                                                            NAMES
+6885c41db8e3   ghcr.io/k3d-io/k3d-proxy:5.4.4   "/bin/sh -c nginx-pr…"   2 hours ago   Up 2 hours   80/tcp, 0.0.0.0:30000->30000/tcp, :::30000->30000/tcp, 0.0.0.0:35167->6443/tcp   k3d-meucluster-serverlb
+
+3) Fazer o clone:
+> git clone https://github.com/szalbuque/kube-news.git
+
+4) Apagar os arquivos yaml antigos: rm *.yaml
+
+--> Preparação do projeto para fazer o deploy no kubernetes:
+1) Criar o container Docker da aplicação
+--> criar o Dockerfile e .dockerignore (dentro da pasta src)
+--> criar a imagem
+> entrar na pasta src
+> docker build -t szalbuque/kube-news:v1 -f Dockerfile .
+--> subir para o Docker Hub
+> docker login
+> docker push szalbuque/kube-news:v1
+--> subir também o latest
+
+CRIAR OS MANIFESTOS DO KUBERNETES para fazer o deploy desta aplicação
+(2:10)
 
 
 
