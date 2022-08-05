@@ -391,9 +391,13 @@ sudo apt install wget ca-certificates
    27  apt install postgresql postgresql-contrib
    28  sudo apt install postgresql postgresql-contrib
    29  sudo service postgresql status
+
+--> LIBERAR A PORTA:
+> kubectl port-forward service/postgre 5432:5432
+
 >> sudo psql --dbname=kubenews --host=localhost --port=5432 --username=kubenews
 
-(2:17)
+(2:26:30)
 
 
 
