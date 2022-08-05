@@ -376,7 +376,24 @@ CONTAINER ID   IMAGE                            COMMAND                  CREATED
 --> subir também o latest
 
 CRIAR OS MANIFESTOS DO KUBERNETES para fazer o deploy desta aplicação
-(2:10)
+
+Criado o arquivo Deployment.yaml dentro da pasta k8s
+Rodei o kubectl apply -f deployment.yaml (por enquanto somente com o banco de dados postgre e o serviço associado a ele)
+> # kubectl apply -f deployment.yaml 
+deployment.apps/postgre created
+service/postgre created
+
+---------> Para testar o BD POSTGRE com linha de comando < -----------
+sudo apt install wget ca-certificates
+   24  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+   25  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
+   26  sudo apt update
+   27  apt install postgresql postgresql-contrib
+   28  sudo apt install postgresql postgresql-contrib
+   29  sudo service postgresql status
+>> sudo psql --dbname=kubenews --host=localhost --port=5432 --username=kubenews
+
+(2:17)
 
 
 
